@@ -174,9 +174,10 @@ function App() {
     if(offline)throw new Error('Conecte-se à internet para atualizar modelos.');if(!updates.name.trim())throw new Error('O nome do modelo é obrigatório.');
     const isUuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
     const previousTemplate=Object.values(templateCatalog).flat().find(item=>item.id===id);
-    const shouldRebuildAi=isUuid&&Boolean(updates.preview_url&&updates.preview_url!==previousTemplate?.preview_url);
+    const {data:currentRow}=isUuid?await supabase.from('templates').select('creation_type').eq('id',id).maybeSingle():{data:null};
+    const shouldRebuildAi=isUuid&&currentRow?.creation_type!=='manual'&&Boolean(updates.preview_url&&updates.preview_url!==previousTemplate?.preview_url);
     const storedPreview=shouldRebuildAi&&updates.preview_url?await persistImageSource(updates.preview_url,'template'):updates.preview_url;
-    if(isUuid){const payload:{name:string;category:string;preview_url?:string;generated_html?:string|null}={name:updates.name.trim(),category:tierToDbCategory[updates.tier]};if(shouldRebuildAi&&storedPreview){payload.preview_url=storedPreview;payload.generated_html=null}const {error}=await supabase.from('templates').update(payload).eq('id',id);if(error)throw error}
+    if(isUuid){const payload:{name:string;category:string;preview_url?:string;generated_html?:string|null;creation_type?:string|null}={name:updates.name.trim(),category:tierToDbCategory[updates.tier]};if(shouldRebuildAi&&storedPreview){payload.preview_url=storedPreview;payload.generated_html=null;payload.creation_type=null}const {error}=await supabase.from('templates').update(payload).eq('id',id);if(error)throw error}
     setTemplateCatalog(current=>{const previous=Object.values(current).flat().find(item=>item.id===id);const next={...current};for(const plan of tiers)next[plan.name]=(current[plan.name]||[]).filter(item=>item.id!==id);const updated={id,name:updates.name.trim(),color:previous?.color||colors[0],layout:previous?.layout||0,preview_url:storedPreview||previous?.preview_url,generated_html:shouldRebuildAi?null:previous?.generated_html};next[updates.tier]=[updated,...(next[updates.tier]||[])];cacheTemplateCatalog(next);return next});
     if(shouldRebuildAi&&storedPreview){notify('Nova imagem salva! Iniciando reconstrução do HTML com IA…');void handleProcessTemplateAi(id,updates.tier,storedPreview).catch(error=>{notify(error instanceof Error?error.message:'Falha ao processar o novo layout com IA.')})}
   };

@@ -162,11 +162,14 @@ Deno.serve(async (req) => {
     const admin = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
     const { data: tpl } = await admin
       .from('templates')
-      .select('id, preview_url, reference_file_url')
+      .select('id, preview_url, reference_file_url, creation_type')
       .eq('id', id)
       .maybeSingle();
 
     if (!tpl) return json({ error: 'Modelo não encontrado.' }, 404);
+    if (tpl.creation_type === 'manual') {
+      return json({ error: 'Este modelo já foi configurado manualmente; o processamento por IA está desabilitado.' }, 409);
+    }
     const imageUrl = tpl.reference_file_url || tpl.preview_url;
     if (!imageUrl) return json({ error: 'Modelo sem imagem de referência.' }, 400);
 
@@ -192,12 +195,16 @@ Deno.serve(async (req) => {
       return json({ error: 'A IA não retornou um HTML válido com os placeholders. Tente novamente.' }, 502);
     }
 
-    const { error: upErr } = await admin
+    // Success is recorded only here, together with the HTML, and never over a manual template.
+    const { data: saved, error: upErr } = await admin
       .from('templates')
-      .update({ generated_html: html, updated_at: new Date().toISOString() })
-      .eq('id', id);
+      .update({ generated_html: html, creation_type: 'ai', template_schema: null, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .or('creation_type.is.null,creation_type.eq.ai')
+      .select('id');
 
     if (upErr) return json({ error: 'Não foi possível salvar o HTML gerado.' }, 500);
+    if (!saved?.length) return json({ error: 'O modelo foi configurado manualmente durante o processamento; o HTML da IA foi descartado.' }, 409);
 
     return json({ generated_html: html });
   } catch (e: any) {

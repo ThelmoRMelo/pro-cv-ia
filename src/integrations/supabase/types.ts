@@ -214,7 +214,9 @@ export type Database = {
       templates: {
         Row: {
           category: string
+          clean_background_url: string | null
           created_at: string
+          creation_type: string | null
           generated_html: string | null
           id: string
           is_active: boolean
@@ -222,11 +224,14 @@ export type Database = {
           preview_url: string
           prompt: string | null
           reference_file_url: string | null
+          template_schema: Json | null
           updated_at: string
         }
         Insert: {
           category: string
+          clean_background_url?: string | null
           created_at?: string
+          creation_type?: string | null
           generated_html?: string | null
           id?: string
           is_active?: boolean
@@ -234,11 +239,14 @@ export type Database = {
           preview_url?: string
           prompt?: string | null
           reference_file_url?: string | null
+          template_schema?: Json | null
           updated_at?: string
         }
         Update: {
           category?: string
+          clean_background_url?: string | null
           created_at?: string
+          creation_type?: string | null
           generated_html?: string | null
           id?: string
           is_active?: boolean
@@ -246,6 +254,7 @@ export type Database = {
           preview_url?: string
           prompt?: string | null
           reference_file_url?: string | null
+          template_schema?: Json | null
           updated_at?: string
         }
         Relationships: []

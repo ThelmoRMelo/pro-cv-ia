@@ -8,6 +8,13 @@
       "when": 1794259362671,
       "tag": "0000_first_admin_setup",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794267663106,
+      "tag": "0001_templates_creation_modes",
+      "breakpoints": true
     }
   ]
 }
