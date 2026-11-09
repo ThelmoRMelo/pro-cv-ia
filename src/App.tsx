@@ -72,6 +72,9 @@ function App() {
   const [isAdminUser, setIsAdminUser] = useState(false);
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
+  const [hasAdmin, setHasAdmin] = useState<boolean | null>(null);
+  const [checkingAdminExists, setCheckingAdminExists] = useState(true);
+  const [settingUpAdmin, setSettingUpAdmin] = useState(false);
   const [orders, setOrders] = useState<Order[]>(()=>{try{return JSON.parse(localStorage.getItem(ADMIN_ORDERS_CACHE_KEY)||'[]')}catch{return []}});
   const [pixConfigs, setPixConfigs] = useState<PixConfig[]>([]);
   const [recipientName, setRecipientName] = useState('');
@@ -100,6 +103,43 @@ function App() {
   },[]);
   useEffect(()=>{let alive=true;const check=async()=>{if(!session){setIsAdminUser(false);setAuthLoading(false);return}try{const {data,error}=await supabase.rpc('has_role',{_user_id:session.user.id,_role:'admin'});if(alive){setIsAdminUser(!error&&data===true);setAuthLoading(false)}}catch{if(alive){setIsAdminUser(false);setAuthLoading(false)}}};check();return()=>{alive=false}},[session]);
   useEffect(()=>{if(!accessToken)return;let alive=true;supabase.rpc('get_resume_status',{_token:accessToken}).then(({data})=>{const status=data?.[0];if(alive&&status?.template_id)setPurchasedTemplateId(status.template_id);if(alive&&status?.payment_status==='approved'&&status.download_released){if(status.data&&typeof status.data==='object'&&!Array.isArray(status.data))setCandidate({...blank,...status.data as Resume});setApproved(true);setStep('done')}},()=>{});return()=>{alive=false}},[accessToken]);
+  useEffect(()=>{
+    if(!admin)return;
+    let alive=true;
+    setCheckingAdminExists(true);
+    supabase.rpc('has_any_admin').then(({data,error})=>{
+      if(!alive)return;
+      setHasAdmin(!error&&typeof data==='boolean'?data:true); // em caso de erro, postura segura
+      setCheckingAdminExists(false);
+    },()=>{if(alive){setHasAdmin(true);setCheckingAdminExists(false)}});
+    return()=>{alive=false};
+  },[admin,isAdminUser]);
+  const handleSetupFirstAdmin=async(e:React.FormEvent)=>{
+    e.preventDefault();
+    if(!session&&adminPassword.length<6){notify('A senha deve ter no mínimo 6 caracteres.');return}
+    setSettingUpAdmin(true);
+    try{
+      // 1. Se ainda não há sessão, cria a conta (ou reaproveita uma já criada) e entra
+      if(!session){
+        const {data:signUpData,error:signUpError}=await supabase.auth.signUp({email:adminEmail,password:adminPassword,options:{emailRedirectTo:`${window.location.origin}/admin`}});
+        if(signUpError&&!/already|registered/i.test(signUpError.message)){notify(signUpError.message||'Erro ao criar conta.');return}
+        if(!signUpData?.session){
+          const {error:signInError}=await supabase.auth.signInWithPassword({email:adminEmail,password:adminPassword});
+          if(signInError){
+            if(/confirm/i.test(signInError.message))notify('Conta criada! Confirme o e-mail recebido e depois clique novamente em "Criar e acessar painel".');
+            else notify('Não foi possível entrar com esses dados.');
+            return;
+          }
+        }
+      }
+      // 2. Ativa o papel de administrador (o servidor bloqueia se já existir um)
+      const {error:claimError}=await supabase.rpc('claim_first_admin');
+      if(claimError){notify('Não foi possível definir como administrador.');setHasAdmin(true);return}
+      setHasAdmin(true);
+      setIsAdminUser(true);
+      notify('Administrador configurado com sucesso!');
+    }finally{setSettingUpAdmin(false)}
+  };
   useEffect(()=>{setProofSent(Boolean(accessToken&&localStorage.getItem(`cv_payment_proof_sent_${accessToken}`)==='1'))},[accessToken]);
   useEffect(()=>{if(!isAdminUser)return;let alive=true;const load=async()=>{try{const {data,error}=await supabase.from('resumes').select('id,client_name,client_email,client_phone,plan,payment_status,download_released,amount_cents,created_at,template_id,payment_proof_path').order('created_at',{ascending:false}).limit(100);if(error)throw error;if(alive){const rows=(data||[]) as Order[];setOrders(rows);localStorage.setItem(ADMIN_ORDERS_CACHE_KEY,JSON.stringify(rows))}}catch{try{const rows=JSON.parse(localStorage.getItem(ADMIN_ORDERS_CACHE_KEY)||'[]') as Order[];if(alive)setOrders(rows)}catch{/* empty cache */}}try{const {data}=await supabase.from('plans').select('id,slug,name,price_cents,is_active').eq('is_active',true);if(alive&&data)setPlanIds(current=>{const next={...current};for(const plan of data){const tier=tiers.find(item=>tierSlug[item.name]===plan.slug);if(tier)next[tier.name]=plan.id}return next})}catch{/* keep cached plan ids */}try{const {data}=await supabase.from('pix_configs').select('*');if(alive&&data){setPixConfigs(data as PixConfig[]);const first=data.find(config=>config.is_active);if(first){setPixKey(first.pix_key);setRecipientName(first.recipient_name)}}}catch{/* Pix remains read-only while unavailable */}};load();const timer=window.setInterval(load,offline?30000:12000);return()=>{alive=false;window.clearInterval(timer)}},[isAdminUser,offline]);
   useEffect(()=>{if(step!=='payment'||!accessToken)return;let alive=true;const poll=async()=>{try{const {data,error}=await supabase.rpc('get_resume_status',{_token:accessToken});if(error)throw error;const status=data?.[0];if(alive&&status?.payment_status==='approved'&&status.download_released){setApproved(true);setStep('done');return}const {data:checkoutData}=await supabase.rpc('get_checkout',{_token:accessToken});const next=checkoutData?.[0] as Checkout|undefined;if(alive&&next)setCheckout(next)}catch{/* continue polling; cached client state stays visible */}};poll();const timer=window.setInterval(poll,5000);return()=>{alive=false;window.clearInterval(timer)}},[step,accessToken]);
@@ -210,7 +250,8 @@ function App() {
     <div className="form-preview"><div><span className="eyebrow">{chosen?`MODELO SELECIONADO · ${chosen.name.toUpperCase()}`:'PRÉVIA DO SEU PERFIL'}</span><b>{candidate.name||'Seu nome aparecerá aqui'}</b><small>{candidate.role||'Área ou cargo desejado'}{candidate.city?` · ${candidate.city}`:''}</small><div className="form-preview-data">{candidate.email&&<span>{candidate.email}</span>}{candidate.phone&&<span>{candidate.phone}</span>}{candidate.summary&&<span>{candidate.summary}</span>}{candidate.experience&&<span>{candidate.experience.split('\n')[0]}</span>}</div>{chosen&&<button type="button" className="preview-inline-link" onClick={()=>setPreviewTemplate(chosen)}>Ver currículo completo <ArrowUpRight size={13}/></button>}</div><div className="form-preview-design"><MiniResume color={chosen?.color||'#779283'} layout={chosen?.layout||0} name={candidate.name} photo={candidate.photoUrl}/><small>{chosen?.name||'Modelo de exemplo'}</small></div></div>
     <div className="form-foot"><span><LockKeyhole size={14}/> Seus dados são salvos neste dispositivo e enviados ao Supabase ao criar o pedido.</span><button className="button primary" type="submit">Salvar e escolher modelo <ArrowRight size={16}/></button></div>
   </form>;
-    if(admin && authLoading) return <div className="admin-login-shell"><div className="admin-login-card"><span className="eyebrow">ÁREA PROTEGIDA</span><h1>Validando acesso…</h1></div></div>;
+    if(admin && (authLoading || checkingAdminExists)) return <div className="admin-login-shell"><div className="admin-login-card"><span className="eyebrow">ÁREA PROTEGIDA</span><h1>Validando acesso…</h1></div></div>;
+    if(admin && hasAdmin===false && !isAdminUser) return <div className="admin-login-shell"><form className="admin-login-card" onSubmit={handleSetupFirstAdmin}><span className="eyebrow">CONFIGURAÇÃO INICIAL</span><h1>Criar primeiro administrador</h1><p>Este sistema ainda não possui um administrador. Crie sua conta mestre agora.</p>{session?<p>Conectado como <b>{session.user.email}</b>.</p>:<><label>E-mail<input type="email" required autoComplete="username" value={adminEmail} onChange={e=>setAdminEmail(e.target.value)}/></label><label>Senha<input type="password" required minLength={6} autoComplete="new-password" value={adminPassword} onChange={e=>setAdminPassword(e.target.value)}/></label></>}<button className="button primary wide-button" type="submit" disabled={settingUpAdmin}>{settingUpAdmin?'Criando…':'Criar e acessar painel'} <ArrowRight size={16}/></button><button type="button" className="back-link" onClick={()=>switchAdmin(false)}>Voltar à página</button></form></div>;
     if(admin && (!session || !isAdminUser)) return <div className="admin-login-shell"><form className="admin-login-card" onSubmit={async e=>{e.preventDefault();const {error}=await supabase.auth.signInWithPassword({email:adminEmail,password:adminPassword});if(error)notify("Não foi possível entrar. Confira seu acesso de administrador.")}}><span className="eyebrow">PAINEL ADMINISTRATIVO</span><h1>Entre para continuar.</h1><p>Acesse com a conta autorizada para administrar pedidos e recebimentos.</p><label>E-mail<input type="email" required autoComplete="username" value={adminEmail} onChange={e=>setAdminEmail(e.target.value)}/></label><label>Senha<input type="password" required autoComplete="current-password" value={adminPassword} onChange={e=>setAdminPassword(e.target.value)}/></label><button className="button primary wide-button" type="submit">Entrar <ArrowRight size={16}/></button><button type="button" className="back-link" onClick={()=>switchAdmin(false)}>Voltar à página</button></form></div>;
     if(admin && isAdminUser) return <Suspense fallback={<div className="admin-login-shell"><div className="admin-login-card"><span className="eyebrow">PAINEL ADMINISTRATIVO</span><h1>Carregando painel…</h1></div></div>}><AdminPanel tab={adminTab} setTab={setAdminTab} tier={active} setTier={setActive} orders={orders} templates={templateCatalog} prices={prices} planIds={planIds} pixConfigs={pixConfigs} offline={offline} onApprove={approvePayment} onRelease={releaseDownload} onSavePix={savePixConfig} onImportTemplate={handleImportTemplate} onUpdateTemplate={handleUpdateTemplate} onDeleteTemplate={handleDeleteTemplate} onProcessTemplateAi={handleProcessTemplateAi} onSignOut={()=>supabase.auth.signOut()} notify={notify}/></Suspense>;
 
