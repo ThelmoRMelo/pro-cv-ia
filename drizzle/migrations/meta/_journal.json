@@ -15,6 +15,13 @@
       "when": 1794267663106,
       "tag": "0001_templates_creation_modes",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794356392970,
+      "tag": "0002_plans_autonomy",
+      "breakpoints": true
     }
   ]
 }

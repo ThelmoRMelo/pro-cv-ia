@@ -287,6 +287,16 @@ export type Database = {
         Args: { _release: boolean; _resume_id: string }
         Returns: undefined
       }
+      admin_save_plan_and_pix: {
+        Args: {
+          _pix_key: string
+          _price_cents: number
+          _qr_code_object_path: string
+          _recipient_name: string
+          _slug: string
+        }
+        Returns: string
+      }
       admin_set_payment: {
         Args: { _approve: boolean; _resume_id: string }
         Returns: undefined
@@ -332,6 +342,7 @@ export type Database = {
         }
         Returns: string
       }
+      seed_default_plans: { Args: never; Returns: undefined }
       set_payment_proof: {
         Args: { _path: string; _token: string }
         Returns: undefined
