@@ -1,5 +1,6 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { resolveGeminiKey } from '../_shared/ai-key.ts';
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -173,7 +174,7 @@ Deno.serve(async (req) => {
     const imageUrl = tpl.reference_file_url || tpl.preview_url;
     if (!imageUrl) return json({ error: 'Modelo sem imagem de referência.' }, 400);
 
-    const geminiKey = Deno.env.get('Gemini_API_Key') || Deno.env.get('GEMINI_API_KEY');
+    const geminiKey = await resolveGeminiKey(admin);
     const gatewayKey = Deno.env.get('LOVABLE_API_KEY');
 
     let rawOutput = '';
@@ -184,7 +185,7 @@ Deno.serve(async (req) => {
     } else if (gatewayKey) {
       rawOutput = await generateHtmlWithGateway(gatewayKey, imageUrl);
     } else {
-      return json({ error: 'Nenhuma chave de IA configurada (cadastre Gemini_API_Key nos segredos).' }, 500);
+      return json({ error: 'Nenhuma chave de IA configurada (cadastre a chave Gemini em Configurações no painel).' }, 500);
     }
 
     let html = rawOutput.replace(/^```(?:html)?\s*/i, '').replace(/```\s*$/, '').trim();

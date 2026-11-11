@@ -1,3 +1,3 @@
 # Project conventions
 - Resolve reference and Pix images through `imageSources` and `ResolvedImage`, including legacy formats and signed URL renewal, so every view uses the same access path.
-- Persist new reference and Pix uploads in Storage before saving their source to application records; keep legacy Data URLs readable and preserve existing access policies.
+- Persist new reference and Pix uploads in Storage before saving their source to application records; keep legacy Data URLs readable and preserve existing access policies.- AI settings (Gemini key, persona, master prompt) live in the admin-only ai_settings row, read/written only via admin_* RPCs and server functions (resolveGeminiKey: panel key first, env secret fallback); why: remixes work without re-entering secrets and the key never reaches visitors.

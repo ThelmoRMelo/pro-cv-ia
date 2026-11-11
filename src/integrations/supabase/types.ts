@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_settings: {
+        Row: {
+          extra: Json
+          gemini_api_key: string | null
+          id: string
+          model: string
+          personality_tone: string
+          system_prompt: string
+          temperature: number
+          updated_at: string
+          updated_by: string | null
+          voice_style: string
+        }
+        Insert: {
+          extra?: Json
+          gemini_api_key?: string | null
+          id?: string
+          model?: string
+          personality_tone?: string
+          system_prompt?: string
+          temperature?: number
+          updated_at?: string
+          updated_by?: string | null
+          voice_style?: string
+        }
+        Update: {
+          extra?: Json
+          gemini_api_key?: string | null
+          id?: string
+          model?: string
+          personality_tone?: string
+          system_prompt?: string
+          temperature?: number
+          updated_at?: string
+          updated_by?: string | null
+          voice_style?: string
+        }
+        Relationships: []
+      }
       order_events: {
         Row: {
           action: string
@@ -283,8 +322,34 @@ export type Database = {
     }
     Functions: {
       admin_exists: { Args: never; Returns: boolean }
+      admin_get_ai_settings: {
+        Args: never
+        Returns: {
+          api_key_hint: string
+          extra: Json
+          has_api_key: boolean
+          model: string
+          personality_tone: string
+          system_prompt: string
+          temperature: number
+          updated_at: string
+          voice_style: string
+        }[]
+      }
       admin_release_download: {
         Args: { _release: boolean; _resume_id: string }
+        Returns: undefined
+      }
+      admin_save_ai_settings: {
+        Args: {
+          _api_key: string
+          _extra?: Json
+          _model: string
+          _personality_tone: string
+          _system_prompt: string
+          _temperature: number
+          _voice_style: string
+        }
         Returns: undefined
       }
       admin_save_plan_and_pix: {

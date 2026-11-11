@@ -22,6 +22,13 @@
       "when": 1794356392970,
       "tag": "0002_plans_autonomy",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794398081443,
+      "tag": "0003_ai_settings",
+      "breakpoints": true
     }
   ]
 }
