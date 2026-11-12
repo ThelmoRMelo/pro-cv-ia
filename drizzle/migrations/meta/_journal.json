@@ -29,6 +29,20 @@
       "when": 1794398081443,
       "tag": "0003_ai_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794442022955,
+      "tag": "0004_assistant_identity",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794442076896,
+      "tag": "0005_assistant_public_enabled",
+      "breakpoints": true
     }
   ]
 }

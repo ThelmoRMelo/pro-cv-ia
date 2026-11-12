@@ -16,6 +16,9 @@ export type Database = {
     Tables: {
       ai_settings: {
         Row: {
+          assistant_avatar_url: string | null
+          assistant_enabled: boolean
+          assistant_name: string
           extra: Json
           gemini_api_key: string | null
           id: string
@@ -26,8 +29,12 @@ export type Database = {
           updated_at: string
           updated_by: string | null
           voice_style: string
+          welcome_message: string
         }
         Insert: {
+          assistant_avatar_url?: string | null
+          assistant_enabled?: boolean
+          assistant_name?: string
           extra?: Json
           gemini_api_key?: string | null
           id?: string
@@ -38,8 +45,12 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           voice_style?: string
+          welcome_message?: string
         }
         Update: {
+          assistant_avatar_url?: string | null
+          assistant_enabled?: boolean
+          assistant_name?: string
           extra?: Json
           gemini_api_key?: string | null
           id?: string
@@ -50,6 +61,7 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           voice_style?: string
+          welcome_message?: string
         }
         Relationships: []
       }
@@ -336,6 +348,15 @@ export type Database = {
           voice_style: string
         }[]
       }
+      admin_get_assistant_identity: {
+        Args: never
+        Returns: {
+          assistant_avatar_url: string
+          assistant_enabled: boolean
+          assistant_name: string
+          welcome_message: string
+        }[]
+      }
       admin_release_download: {
         Args: { _release: boolean; _resume_id: string }
         Returns: undefined
@@ -349,6 +370,15 @@ export type Database = {
           _system_prompt: string
           _temperature: number
           _voice_style: string
+        }
+        Returns: undefined
+      }
+      admin_save_assistant_identity: {
+        Args: {
+          _avatar_url: string
+          _enabled: boolean
+          _name: string
+          _welcome: string
         }
         Returns: undefined
       }
@@ -375,6 +405,15 @@ export type Database = {
           pix_key: string
           qr_code_object_path: string
           recipient_name: string
+        }[]
+      }
+      get_public_assistant_config: {
+        Args: never
+        Returns: {
+          assistant_avatar_url: string
+          assistant_name: string
+          enabled: boolean
+          welcome_message: string
         }[]
       }
       get_resume_status: {
