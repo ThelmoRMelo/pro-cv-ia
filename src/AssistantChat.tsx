@@ -59,14 +59,28 @@ export default function AssistantChat({candidate,onUpdateCandidate}:AssistantCha
     const userMessage=makeMessage('user',text);const nextMessages=[...messages,userMessage];setMessages(nextMessages);setInput('');setIsLoading(true);
     if(inputRef.current)inputRef.current.style.height='auto';
     try{
-      const {data,error}=await supabase.functions.invoke('assistant-interview',{body:{messages:nextMessages.map(({role,text})=>({role,text})),resume:candidate}});
-      if(error||!data?.ok){setMessages(current=>[...current,makeMessage('assistant',data?.error||error?.message||'Não consegui responder agora. Tente novamente em instantes.')]);return}
+      const {data,error}=await supabase.functions.invoke('assistant-interview',{
+        body:{messages:nextMessages.map(({role,text:messageText})=>({role,text:messageText})),resume:candidate},
+      });
+      if(error){
+        setMessages(current=>[...current,makeMessage('assistant','Tivemos uma pequena oscilação na conexão. Por favor, tente novamente em instantes.')]);
+        return;
+      }
+      if(!data?.ok){
+        const friendlyError=typeof data?.error==='string'&&data.error.trim()
+          ?data.error.trim()
+          :'Tivemos uma pequena oscilação na conexão. Por favor, tente novamente em instantes.';
+        setMessages(current=>[...current,makeMessage('assistant',friendlyError)]);
+        return;
+      }
       if(data.resume_patch&&typeof data.resume_patch==='object')applyPatch(data.resume_patch as ResumePatch);
-      const response=makeMessage('assistant',typeof data.reply==='string'&&data.reply.trim()?data.reply.trim():'Entendi. Pode me contar mais?');
+      const response=makeMessage('assistant',typeof data.reply==='string'&&data.reply.trim()?data.reply.trim():'Entendi! O que mais você gostaria de adicionar?');
       const additions=[response];
       if(data.done===true){setIsDone(true);additions.push(makeMessage('assistant','Sua entrevista foi concluída! Confira os dados na prévia do currículo e escolha o modelo que mais combina com você.'))}
       setMessages(current=>[...current,...additions]);
-    }catch(error){setMessages(current=>[...current,makeMessage('assistant',error instanceof Error?error.message:'Não foi possível conectar à assistente. Tente novamente.')])}finally{setIsLoading(false)}
+    }catch{
+      setMessages(current=>[...current,makeMessage('assistant','Não consegui me conectar no momento. Verifique sua conexão e tente novamente em instantes.')]);
+    }finally{setIsLoading(false)}
   };
 
   return <>
