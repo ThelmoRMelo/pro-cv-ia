@@ -1,0 +1,2 @@
+ALTER TABLE public.ai_settings ALTER COLUMN model SET DEFAULT 'gemini-flash-latest';
+UPDATE public.ai_settings SET model = 'gemini-flash-latest' WHERE model IN ('gemini-2.0-flash','gemini-1.5-flash','gemini-1.5-pro');

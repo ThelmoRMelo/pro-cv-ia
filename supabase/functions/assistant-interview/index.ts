@@ -102,19 +102,26 @@ ${FIELDS}
 
 Nunca invente dados que o candidato não disse. Marque "done": true apenas quando o candidato confirmar que o currículo está completo.`;
 
-    const model = settings?.model || 'gemini-2.0-flash';
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-      method: 'POST',
-      headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: system }] },
-        contents,
-        generationConfig: {
-          temperature: Number(settings?.temperature ?? 0.7),
-          responseMimeType: 'application/json',
-        },
-      }),
-    });
+    const preferred = settings?.model || 'gemini-flash-latest';
+    const candidates = [...new Set([preferred, 'gemini-flash-latest', 'gemini-3.8-flash', 'gemini-flash-lite-latest'])];
+    let response!: Response;
+    for (const model of candidates) {
+      response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+        method: 'POST',
+        headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: system }] },
+          contents,
+          generationConfig: {
+            temperature: Number(settings?.temperature ?? 0.7),
+            responseMimeType: 'application/json',
+          },
+        }),
+      });
+      if (response.status !== 404) break;
+      console.warn(`[assistant-interview] Modelo indisponível: ${model}, tentando próximo.`);
+      await response.text();
+    }
 
     if (!response.ok) {
       const errorText = await response.text();

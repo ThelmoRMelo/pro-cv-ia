@@ -43,6 +43,13 @@
       "when": 1794442076896,
       "tag": "0005_assistant_public_enabled",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794468071005,
+      "tag": "0006_ai_model_default_update",
+      "breakpoints": true
     }
   ]
 }
